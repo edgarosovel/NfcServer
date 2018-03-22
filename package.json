@@ -1,0 +1,26 @@
+{
+  "name": "nfcserver",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
+  },
+  "author": "Edgar Osornio Velázquez",
+  "license": "ISC",
+  "dependencies": {
+    "replyer": "^0.2.1",
+    "request": "^2.85.0",
+    "ws": "^5.0.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edgarosovel/NfcServer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edgarosovel/NfcServer/issues"
+  },
+  "homepage": "https://github.com/edgarosovel/NfcServer#readme",
+  "description": ""
+}
