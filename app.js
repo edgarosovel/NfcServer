@@ -16,40 +16,27 @@ client.on('RFID/#', function (datos, topico) {
   request.post({
     headers: {'content-type' : 'application/x-www-form-urlencoded'},
     url:     CONFIG.URLportalRFID + 'obtenerFuncionRFID',
-    form:    { MAC:direccionMAC }
-  }, function(error, response, body){
-    if (error){
-      console.log(error);
-      return;
-    }
-    res = JSON.parse(body);
-    if (res){   //Si el RFID NO tiene una función asignada en el portal, res es nulo
-      if(res.usaSockets && res.usaSockets=='1'){
-        mandarDatosASocket(direccionMAC, datos);
-        // modificar res 
-      }else{
-        APIhandler(direccionMAC, datos); 
-        // modificar res 
-      }
-      client.reply(`registroCB/${direccionMAC}`, 1);
-    }
-  });
-});
-
-function APIhandler (direccionMAC, datos){
-  request.post({
-    headers: {'content-type' : 'application/x-www-form-urlencoded'},
-    url:     CONFIG.URLportalRFID + 'handler',
     form:    { MAC:direccionMAC, datos:datos }
   }, function(error, response, body){
     if (error){
       console.log(error);
       return;
     }
-    res = JSON.parse(body);
-    client.reply(`RFIDCB/${direccionMAC}`, res); //CB = callbacks
+    try{
+      res = JSON.parse(body);
+    }catch(e){
+      console.log("Error al convertir a JSON la respuesta. Probablemente el portal está caído.")
+      return;
+    }
+    if (res){   //Si el RFID NO tiene una función asignada en el portal, res es nulo
+      if(res.usaSockets && res.usaSockets=='1'){
+        mandarDatosASocket(direccionMAC, datos);
+        res = 1;
+      }
+      client.reply(`RFIDCB/${direccionMAC}`, res);
+    }
   });
-}
+});
 
 client.on('registro/#', function (data, topic) {
   var direccionMAC
@@ -60,19 +47,24 @@ client.on('registro/#', function (data, topic) {
     url:     CONFIG.URLportalRFID + 'verificacionRFID',
     form:    {MAC:direccionMAC}
   }, function(error, response, body){
-    if (error){
+    if (error) {
       console.log(error);
       return;
     }
-    res = JSON.parse(body);
-    client.reply(`registroCB/${direccionMAC}`, res) //CB = callbacks
+    try{
+      res = JSON.parse(body);
+    }catch(e){
+      console.log("Error al convertir a JSON la respuesta. Probablemente el portal está caído.")
+      return;
+    }
+    client.reply(`RFIDCB/${direccionMAC}`, res) //CB = callbacks
   });
 });
 
-
 function mandarDatosASocket(direccionMAC, datos){
   if(!(direccionMAC in conexiones)) return; // Si nadie ha selecccionado el modulo para usarlo, regresa
-  conexiones[direccionMAC].send(datos,(error)=>{
+  // se envía un arreglo. [0] es la opcion y [1] el contenido
+  conexiones[direccionMAC].send('UID,'+datos,(error)=>{
     if (error) console.log(error);
   });
 }
@@ -80,14 +72,25 @@ function mandarDatosASocket(direccionMAC, datos){
 // SOCKETS
 socket.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
-    // El mensaje debe de contener la direccion MAC de donde se quiera escuchar
-    if(conexiones[message]){  //Si alguien ya tiene el modulo en uso, lo regresa
-      ws.send("Conexion0");
-      return;
+    message = message.split(",");
+    // message es un arreglo. [0] es la opcion y [1] el contenido
+    switch (message[0]) {
+      case 'seleccionModulo':
+        // El contenido del mensaje debe de contener la direccion MAC de donde se quiera escuchar
+        if(conexiones[message[1]]){  //Si alguien ya tiene el modulo en uso, lo regresa
+          ws.send("conexion,0");
+          return;
+        }
+        conexiones[message[1]] = ws; //Se guarda el modulo seleccionado en la tabla
+        ws.MAC = message[1];
+        ws.send("conexion,1");
+        break;
+      case 'identificacionModulo':
+      // message[1] contiene la direccion MAC del modulo a identificar
+      client.reply(`RFIDCB/${message[1]}`, 1);  
+      default:
+        break;
     }
-    conexiones[message] = ws; //Se guarda el modulo seleccionado en la tabla
-    ws.MAC = message;
-    ws.send("Conexion1");
   });
   ws.on('close', function close() {
     delete conexiones[ws.MAC];
