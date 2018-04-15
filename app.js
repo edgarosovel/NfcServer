@@ -1,5 +1,7 @@
 const CONFIG = require('./config');
 const request = require('request');
+const fs = require('fs');
+const https = require('https');
 const mqtt = require('replyer');
 const client  = mqtt.connect(CONFIG.URLbroker);
 const WebSocket = require('ws');
@@ -8,6 +10,10 @@ const conexiones = {};
  
 client.on('connect', function () {
   console.log('Conectado al broker');
+});
+
+client.on('close', function () {
+  console.log('Desconectado de broker');
 });
  
 client.on('RFID/#', function (datos, topico) {
@@ -31,9 +37,9 @@ client.on('RFID/#', function (datos, topico) {
     if (res){   //Si el RFID NO tiene una función asignada en el portal, res es nulo
       if(res.usaSockets && res.usaSockets=='1'){
         mandarDatosASocket(direccionMAC, datos);
-        res = 1;
+        if (!res.response || res.response==null) res.response = 1;
       }
-      client.reply(`RFIDCB/${direccionMAC}`, res);
+      client.reply(`RFIDCB/${direccionMAC}`, res.response);
     }
   });
 });
