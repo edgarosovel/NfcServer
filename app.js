@@ -5,7 +5,11 @@ const https = require('https');
 const mqtt = require('replyer');
 const client  = mqtt.connect(CONFIG.URLbroker);
 const WebSocket = require('ws');
-const socket = new WebSocket.Server({ port: 8080 });
+const server = https.createServer({
+	cert: fs.readFileSync('/etc/letsencrypt/live/portalinformatica.uaq.mx/cert.pem'),
+	key: fs.readFileSync('/etc/letsencrypt/live/portalinformatica.uaq.mx/privkey.pem'),
+}).listen(8080);
+const socket = new WebSocket.Server({ server });
 const conexiones = {};
  
 client.on('connect', function () {
