@@ -80,8 +80,10 @@ function mandarDatosASocket(direccionMAC, datos){
 }
 
 // SOCKETS
-socket.on('connection', function connection(ws) {
-  ws.on('message', function incoming(message) {
+socket.on('connection', function (ws) {
+  ws.isAlive = true;
+  ws.on('pong', heartbeat);
+  ws.on('message', function (message) {
     message = message.split(",");
     // message es un arreglo. [0] es la opcion y [1] el contenido
     switch (message[0]) {
@@ -102,22 +104,28 @@ socket.on('connection', function connection(ws) {
         break;
     }
   });
-  ws.on('close', function close() {
+  ws.on('close', function () {
     delete conexiones[ws.MAC];
   });
-  ws.isAlive = true;
-  ws.on('pong', function () { this.isAlive = true} );
+  ws.on('error', function () {
+    delete conexiones[ws.MAC];
+  });
 });
 
+function noop(){}
+
+function heartbeat() {
+  this.isAlive = true;
+}
 // REVISA CADA TREINTA SEGUNDOS SI SE CERRÓ ALGUNA ONEXION/SOCKET
 const interval = setInterval(function ping() {
-  for (var ws of socket.clients){
-    if (ws.isAlive == false) {
+  socket.clients.forEach(function each(ws) {
+    if (ws.isAlive === false) {
       ws.terminate();
       delete conexiones[ws.MAC];
       return;
     }
     ws.isAlive = false;
-    ws.ping(function(){});
-  }
+    ws.ping(noop);
+  });
 }, 30000);
