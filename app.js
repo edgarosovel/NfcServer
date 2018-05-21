@@ -128,4 +128,4 @@ const interval = setInterval(function ping() {
     ws.isAlive = false;
     ws.ping(noop);
   });
-}, 30000);
+}, 10000);
